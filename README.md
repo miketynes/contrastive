@@ -1,5 +1,4 @@
 # Mike's Fork of `contrastive` Contrastive-PCA
-___
 
 For finding patterns in data subtracting out variance from a 'background' dataset.
 
