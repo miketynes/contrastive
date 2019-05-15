@@ -2,3 +2,4 @@ experiments/MNIST_data/*
 experiments/private/*
 .idea/*
 **/__pycache__/*
+**/.ipynb_checkpoints/*
