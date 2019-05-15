@@ -46,6 +46,7 @@ class CPCA(object):
         self.n_components = n_components
         self.verbose = verbose
         self.fitted = False
+        self.bases = {}  # store the basis sets, keyed by alpha value
 
     def fit_transform(self, foreground, background, plot=False, gui=False, alpha_selection='auto', n_alphas=40,
                       max_log_alpha=3, n_alphas_to_return=4, active_labels = None, colors=None, legend=None,
@@ -297,9 +298,15 @@ class CPCA(object):
         n_components = self.n_components
         sigma = self.fg_cov - alpha*self.bg_cov
         w, v = LA.eig(sigma)
+        # get all of indices of the eigenvalues that are greater than the nth one (counting from the back)
         eig_idx = np.argpartition(w, -n_components)[-n_components:]
+        # put eig_index in the order that puts w[eig_idx] in decreasing order
         eig_idx = eig_idx[np.argsort(-w[eig_idx])]
         v_top = v[:,eig_idx]
+        w_top = w[eig_idx]
+        total_variance = sigma.trace()
+        variance_props = w_top / total_variance
+        self.bases[np.round(alpha, 4)] = {'variance_ratio': variance_props, 'basis': v_top}
         reduced_dataset = dataset.dot(v_top)
         reduced_dataset[:,0] = reduced_dataset[:,0]*np.sign(reduced_dataset[0,0])
         reduced_dataset[:,1] = reduced_dataset[:,1]*np.sign(reduced_dataset[0,1])
