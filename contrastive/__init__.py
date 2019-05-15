@@ -9,6 +9,7 @@ from numpy import linalg as LA
 from sklearn import cluster
 from sklearn.decomposition import PCA
 
+
 class CPCA(object):
     """
     Contrastive PCA (cPCA)
@@ -35,30 +36,37 @@ class CPCA(object):
     def get_affinity_matrix(self):
         return self.affinity_matrix
 
-    # A helper method to standardize arrays
     def standardize_array(self, array):
+        """A helper method to standardize arrays"""
         standardized_array =  (array-np.mean(array,axis=0)) / np.std(array,axis=0)
         return np.nan_to_num(standardized_array)
 
-    #stores
     def __init__(self, n_components=2, standardize=True, verbose=False):
         self.standardize = standardize
         self.n_components = n_components
         self.verbose = verbose
         self.fitted = False
 
+    def fit_transform(self, foreground, background, plot=False, gui=False, alpha_selection='auto', n_alphas=40,
+                      max_log_alpha=3, n_alphas_to_return=4, active_labels = None, colors=None, legend=None,
+                      alpha_value=None, return_alphas=False):
         """
         Finds the covariance matrices of the foreground and background datasets,
         and then transforms the foreground dataset based on the principal contrastive components
 
         Parameters: see self.fit() and self.transform() for parameter description
         """
-    def fit_transform(self, foreground, background, plot=False, gui=False, alpha_selection='auto', n_alphas=40,  max_log_alpha=3, n_alphas_to_return=4, active_labels = None, colors=None, legend=None, alpha_value=None, return_alphas=False):
-        self.fit(foreground, background)
-        return self.transform(dataset=self.fg, alpha_selection=alpha_selection,  n_alphas=n_alphas, max_log_alpha=max_log_alpha, n_alphas_to_return=n_alphas_to_return, plot=plot, gui=gui, active_labels=active_labels, colors=colors, legend=legend, alpha_value=alpha_value, return_alphas=return_alphas)
 
-        """
-        Computes the covariance matrices of the foreground and background datasets
+        self.fit(foreground, background)
+
+        out = self.transform(dataset=self.fg, alpha_selection=alpha_selection,  n_alphas=n_alphas,
+                             max_log_alpha=max_log_alpha, n_alphas_to_return=n_alphas_to_return, plot=plot,
+                             gui=gui, active_labels=active_labels, colors=colors, legend=legend,
+                             alpha_value=alpha_value, return_alphas=return_alphas)
+        return out
+
+    def fit(self, foreground, background, preprocess_with_pca_dim=None):
+        """Computes the covariance matrices of the foreground and background datasets
 
         Parameters
         -----------
@@ -73,8 +81,6 @@ class CPCA(object):
             datasets undergo a preliminary round of PCA to reduce their dimension to this number. If it is not provided
             but n_features > 1,000, a preliminary round of PCA is automatically performed to reduce the dimensionality to 1,000.
         """
-
-    def fit(self, foreground, background, preprocess_with_pca_dim=None):
         # Housekeeping
         self.pca_directions = None
         self.bg_eig_vals = None
@@ -126,8 +132,8 @@ class CPCA(object):
 
         self.fitted = True
 
-
-    def transform(self, dataset, alpha_selection='auto', n_alphas=40, max_log_alpha=3, n_alphas_to_return=4, plot=False, gui=False, active_labels = None, colors=None, legend=None, alpha_value=None, return_alphas=False):
+    def transform(self, dataset, alpha_selection='auto', n_alphas=40, max_log_alpha=3, n_alphas_to_return=4, plot=False,
+                  gui=False, active_labels=None, colors=None, legend=None, alpha_value=None, return_alphas=False):
         if (self.fitted==False):
             raise ValueError("This model has not been fit to a foreground/background dataset yet. Please run the fit() or fit_transform() functions first.")
         if not(alpha_selection=='auto' or alpha_selection=='manual' or alpha_selection=='all'):
@@ -168,10 +174,11 @@ class CPCA(object):
             if (self.n_fg>1000):
                 print("The GUI may be slow to respond with large numbers of data points. Consider using a subset of the original data.")
 
-            """
-            Handles the plotting
-            """
+
             def graph_foreground(ax,fg, active_labels, alpha):
+                """
+                Handles the plotting
+                """
                 for i, l in enumerate(np.sort(np.unique(active_labels))):
                     ax.scatter(fg[np.where(active_labels==l),0],fg[np.where(active_labels==l),1], color=self.colors[i%len(self.colors)], alpha=0.6)
                 if (alpha==0):
@@ -180,10 +187,10 @@ class CPCA(object):
                     ax.annotate(r'$\alpha$='+str(np.round(alpha,2)), (0.05,0.05), xycoords='axes fraction')
 
 
-            """
-            This code gets run whenever the widget slider is moved
-            """
             def update(value):
+                """
+                This code gets run whenever the widget slider is moved
+                """
                 fig = plt.figure(figsize=[10,4])
                 gs=GridSpec(2,4)
 
@@ -252,16 +259,15 @@ class CPCA(object):
         else:
             return transformed_data
 
-
-    """
-    This function performs contrastive PCA using the alpha technique on the
-    active and background dataset. It automatically determines n_alphas=4 important values
-    of alpha up to based to the power of 10^(max_log_alpha=5) on spectral clustering
-    of the top subspaces identified by cPCA.
-    The final return value is the data projected into the top (n_components = 2)
-    subspaces, which can be plotted outside of this function
-    """
     def automated_cpca(self, dataset, n_alphas_to_return, n_alphas, max_log_alpha):
+        """
+        This function performs contrastive PCA using the alpha technique on the
+        active and background dataset. It automatically determines n_alphas=4 important values
+        of alpha up to based to the power of 10^(max_log_alpha=5) on spectral clustering
+        of the top subspaces identified by cPCA.
+        The final return value is the data projected into the top (n_components = 2)
+        subspaces, which can be plotted outside of this function
+        """
         best_alphas, all_alphas, _, _ = self.find_spectral_alphas(n_alphas, max_log_alpha, n_alphas_to_return)
         best_alphas = np.concatenate(([0], best_alphas)) #one of the alphas is always alpha=0
         data_to_plot = []
@@ -270,12 +276,12 @@ class CPCA(object):
             data_to_plot.append(transformed_dataset)
         return data_to_plot, best_alphas
 
-    """
-    This function performs contrastive PCA using the alpha technique on the
-    active and background dataset. It returns the cPCA-reduced data for all values of alpha specified,
-    both the active and background, as well as the list of alphas
-    """
     def all_cpca(self, dataset, n_alphas, max_log_alpha):
+        """
+        Perform ontrastive PCA using the alpha technique on the
+        active and background dataset. It returns the cPCA-reduced data for all values of alpha specified,
+        both the active and background, as well as the list of alphas
+        """
         alphas = np.concatenate(([0],np.logspace(-1,max_log_alpha,n_alphas)))
         data_to_plot = []
         for alpha in alphas:
@@ -283,11 +289,11 @@ class CPCA(object):
             data_to_plot.append(transformed_dataset)
         return data_to_plot, alphas
 
-    """
-    Returns active and bg dataset projected in the cpca direction, as well as the top c_cpca eigenvalues indices.
-    If specified, it returns the top_cpca directions
-    """
     def cpca_alpha(self, dataset, alpha=1):
+        """
+        Returns active and bg dataset projected in the cpca direction, as well as the top c_cpca eigenvalues indices.
+        If specified, it returns the top_cpca directions
+        """
         n_components = self.n_components
         sigma = self.fg_cov - alpha*self.bg_cov
         w, v = LA.eig(sigma)
@@ -299,11 +305,11 @@ class CPCA(object):
         reduced_dataset[:,1] = reduced_dataset[:,1]*np.sign(reduced_dataset[0,1])
         return reduced_dataset
 
-    """
-    This method performs spectral clustering on the affinity matrix of subspaces
-    returned by contrastive pca, and returns (`=3) exemplar values of alpha
-    """
     def find_spectral_alphas(self, n_alphas, max_log_alpha, n_alphas_to_return):
+        """
+        This method performs spectral clustering on the affinity matrix of subspaces
+        returned by contrastive pca, and returns (`=3) exemplar values of alpha
+        """
         self.create_affinity_matrix(max_log_alpha, n_alphas)
         affinity = self.affinity_matrix
         spectral = cluster.SpectralClustering(n_clusters=n_alphas_to_return, affinity='precomputed')
@@ -320,10 +326,9 @@ class CPCA(object):
                 best_alphas.append(alphas[exemplar_idx])
         return np.sort(best_alphas), alphas, affinity[0,:], labels
 
-    """
-    This method creates the affinity matrix of subspaces returned by contrastive pca
-    """
     def create_affinity_matrix(self, max_log_alpha, n_alphas):
+        """Create the affinity matrix of subspaces returned by contrastive pca
+        """
         from math import pi
         alphas = np.concatenate(([0],np.logspace(-1,max_log_alpha,n_alphas)))
         subspaces = list()
