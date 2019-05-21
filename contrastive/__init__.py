@@ -303,10 +303,14 @@ class CPCA(object):
         # put eig_index in the order that puts w[eig_idx] in decreasing order
         eig_idx = eig_idx[np.argsort(-w[eig_idx])]
         v_top = v[:,eig_idx]
+
+        # begin: code we added to store bases and variance proportions
         w_top = w[eig_idx]
         total_variance = sigma.trace()
         variance_props = w_top / total_variance
-        self.bases[np.round(alpha, 4)] = {'variance_ratio': variance_props, 'basis': v_top}
+        self.bases[np.round(alpha, 2)] = {'variance_ratio': variance_props, 'basis': v_top}
+        # end: code we added to store bases and variance proportions
+
         reduced_dataset = dataset.dot(v_top)
         reduced_dataset[:,0] = reduced_dataset[:,0]*np.sign(reduced_dataset[0,0])
         reduced_dataset[:,1] = reduced_dataset[:,1]*np.sign(reduced_dataset[0,1])
