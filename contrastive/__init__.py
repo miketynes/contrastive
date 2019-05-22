@@ -298,18 +298,27 @@ class CPCA(object):
         n_components = self.n_components
         sigma = self.fg_cov - alpha*self.bg_cov
         w, v = LA.eig(sigma)
-        # get all of indices of the eigenvalues that are greater than the nth one (counting from the back)
+        # get all of indices of the eigenvalues that are greater than the nth one (counting from the back) (comment by SchrierLab)
         eig_idx = np.argpartition(w, -n_components)[-n_components:]
-        # put eig_index in the order that puts w[eig_idx] in decreasing order
+        # put eig_index in the order that puts w[eig_idx] in decreasing order (comment by SchrierLab)
         eig_idx = eig_idx[np.argsort(-w[eig_idx])]
         v_top = v[:,eig_idx]
 
-        # begin: code we added to store bases and variance proportions
+        ##############################################################
+        # BEGIN: code we added to store bases and variance proportions
+
+        # get the top n largest eigenvalues which correspond to the variance accounted for by each cPC in the
+        # contrastive covariance matrix
         w_top = w[eig_idx]
+
+        # compute the ratio of variance accounted for by each cPC by dividing the eigenvalues by the total variance
         total_variance = sigma.trace()
         variance_props = w_top / total_variance
+
+        # store our results in a dictionary keyed by alpha
         self.bases[np.round(alpha, 2)] = {'variance_ratio': variance_props, 'basis': v_top}
-        # end: code we added to store bases and variance proportions
+        # END: code we added to store bases and variance proportions
+        ##############################################################
 
         reduced_dataset = dataset.dot(v_top)
         reduced_dataset[:,0] = reduced_dataset[:,0]*np.sign(reduced_dataset[0,0])
